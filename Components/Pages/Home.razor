@@ -1,0 +1,59 @@
+@page "/"
+@using System.Reflection
+@using Microsoft.AspNetCore.Components
+
+<PageTitle>Home</PageTitle>
+
+<div style="max-width: 700px; margin: 2rem auto; padding: 0 1rem; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
+    <h1 style="font-size: 1.75rem; font-weight: 600; margin-bottom: 1.5rem; color: #1a1a2e;">Pages</h1>
+
+    @if (routes.Count > 0)
+    {
+        <nav>
+            <ul style="list-style: none; padding: 0; margin: 0;">
+                @foreach (var route in routes)
+                {
+                    <li style="margin-bottom: 0.5rem;">
+                        <a href="@route.Path"
+                           style="display: block; padding: 0.75rem 1rem; border-radius: 6px; text-decoration: none; color: #1a73e8; background: #f8f9fa; transition: background 0.15s;">
+                            @route.Name
+                        </a>
+                    </li>
+                }
+            </ul>
+        </nav>
+    }
+    else
+    {
+        <p style="color: #6b7280;">No pages found. Add Razor components with <code>@@page</code> directives to see them here.</p>
+    }
+</div>
+
+@code {
+    record RouteInfo(string Path, string Name);
+    List<RouteInfo> routes = [];
+
+    protected override void OnInitialized()
+    {
+        var excludedRoutes = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "/", "/error", "/not-found" };
+
+        routes = typeof(Home).Assembly.GetTypes()
+            .Where(t => typeof(ComponentBase).IsAssignableFrom(t) && !t.IsAbstract)
+            .SelectMany(t => t.GetCustomAttributes<RouteAttribute>())
+            .Select(a => a.Template)
+            .Where(r => !excludedRoutes.Contains(r) && !r.Contains('{'))
+            .Distinct()
+            .OrderBy(r => r)
+            .Select(r => new RouteInfo(r, HumanizeRoute(r)))
+            .ToList();
+    }
+
+    static string HumanizeRoute(string route)
+    {
+        var segments = route.TrimStart('/').Split('/', StringSplitOptions.RemoveEmptyEntries);
+        var humanized = segments.Select(s =>
+            CultureInfo.InvariantCulture.TextInfo.ToTitleCase(
+                s.Replace('-', ' ').Replace('_', ' ')));
+        return string.Join(" / ", humanized);
+    }
+}

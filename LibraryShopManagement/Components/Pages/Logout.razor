@@ -1,0 +1,41 @@
+@page "/logout"
+@using System.Threading.Tasks
+@using BlazorApp.Features.Helpers
+@inject NavigationManager Navigation
+@layout LibraryShopManagement.Components.Layout.EmptyLayout
+
+<MudDialog Visible="@showLogoutDialog" Options="dialogOptions">
+    <DialogContent>
+        <MudText Typo="Typo.h6" GutterBottom="true">Logout</MudText>
+        <MudText Typo="Typo.body1">Do you want to logout?</MudText>
+    </DialogContent>
+    <DialogActions>
+        <MudButton Variant="Variant.Outlined" Color="Color.Default" OnClick="CancelLogout">Cancel</MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Error" OnClick="ConfirmLogout">Logout</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    private readonly CustomAuthenticationStateProvider authProvider = new();
+    private bool showLogoutDialog = true;
+    private readonly DialogOptions dialogOptions = new()
+    {
+        BackdropClick = false,
+        CloseOnEscapeKey = false,
+        MaxWidth = MaxWidth.ExtraSmall,
+        FullWidth = true
+    };
+
+    private async Task ConfirmLogout()
+    {
+        showLogoutDialog = false;
+        await authProvider.LogoutAsync();
+        Navigation.NavigateTo("/login");
+    }
+
+    private void CancelLogout()
+    {
+        showLogoutDialog = false;
+        Navigation.NavigateTo("/");
+    }
+}

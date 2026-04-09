@@ -1,0 +1,29 @@
+@inherits LayoutComponentBase
+
+<MudThemeProvider Theme="_theme" />
+<MudLayout>
+    <MudMainContent>
+        <div class="empty-layout-shell">
+            @Body
+        </div>
+    </MudMainContent>
+</MudLayout>
+
+@code {
+    private readonly MudTheme _theme = new()
+    {
+        PaletteLight = new PaletteLight
+        {
+            Primary = new MudBlazor.Utilities.MudColor("#f4a261"),
+            Secondary = new MudBlazor.Utilities.MudColor("#8ecae6"),
+            Background = new MudBlazor.Utilities.MudColor("#fff8f2"),
+            Surface = new MudBlazor.Utilities.MudColor("#ffffff"),
+            AppbarBackground = new MudBlazor.Utilities.MudColor("#f4a261"),
+            AppbarText = new MudBlazor.Utilities.MudColor("#ffffff")
+        },
+        LayoutProperties = new LayoutProperties
+        {
+            DrawerWidthLeft = "260px"
+        }
+    };
+}

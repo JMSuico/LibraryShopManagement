@@ -1,0 +1,105 @@
+@page "/"
+@using System
+@using System.Threading
+@using System.Threading.Tasks
+@using BlazorApp.Features.Services.Interfaces
+@implements IAsyncDisposable
+@inject IUserService UserService
+@inject IBookService BookService
+@layout LibraryShopManagement.Components.Layout.MainLayout
+
+<MudGrid Class="mt-2">
+    <MudItem xs="12" md="7">
+        <MudPaper Class="pa-6 rounded-lg" Elevation="2">
+            <MudText Typo="Typo.h3" Color="Color.Primary" GutterBottom="true">Welcome to LibraryShopManagement</MudText>
+            <MudText Typo="Typo.body1" Class="mb-4">A playful management interface for running your library shop with a soft apricot and light blue look.</MudText>
+            <div class="d-flex flex-wrap gap-3">
+                <MudButton Href="/dashboard" Variant="Variant.Filled" Color="Color.Primary">Open Dashboard</MudButton>
+                <MudButton Href="/book-management" Variant="Variant.Outlined" Color="Color.Secondary">Manage Books</MudButton>
+                <MudButton Href="/user-management" Variant="Variant.Outlined" Color="Color.Primary">Manage Users</MudButton>
+            </div>
+        </MudPaper>
+    </MudItem>
+    <MudItem xs="12" md="5">
+        <MudPaper Class="pa-6 rounded-lg" Elevation="1">
+            <div class="d-flex align-center justify-space-between mb-4">
+                <MudText Typo="Typo.h6">Quick Stats</MudText>
+                <MudText Typo="Typo.caption" Class="mud-text-secondary">Live every 2s</MudText>
+            </div>
+            <MudGrid>
+                <MudItem xs="6">
+                    <MudPaper Class="pa-4 mud-theme-primary rounded-lg" Elevation="0">
+                        <MudText Typo="Typo.caption">Users</MudText>
+                        <MudText Typo="Typo.h4">@userCount</MudText>
+                        <MudText Typo="Typo.body2">Updated @lastUpdated</MudText>
+                    </MudPaper>
+                </MudItem>
+                <MudItem xs="6">
+                    <MudPaper Class="pa-4 mud-theme-secondary rounded-lg" Elevation="0">
+                        <MudText Typo="Typo.caption">Books</MudText>
+                        <MudText Typo="Typo.h4">@bookCount</MudText>
+                        <MudText Typo="Typo.body2">Updated @lastUpdated</MudText>
+                    </MudPaper>
+                </MudItem>
+            </MudGrid>
+        </MudPaper>
+    </MudItem>
+</MudGrid>
+
+@code {
+    private int userCount;
+    private int bookCount;
+    private string lastUpdated = "--:--:--";
+    private readonly CancellationTokenSource refreshCancellationTokenSource = new();
+    private PeriodicTimer? refreshTimer;
+    private Task? refreshTask;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadStatsAsync();
+        refreshTimer = new PeriodicTimer(TimeSpan.FromSeconds(2));
+        refreshTask = StartLiveUpdatesAsync();
+    }
+
+    private async Task StartLiveUpdatesAsync()
+    {
+        if (refreshTimer is null)
+        {
+            return;
+        }
+
+        try
+        {
+            while (await refreshTimer.WaitForNextTickAsync(refreshCancellationTokenSource.Token))
+            {
+                await LoadStatsAsync();
+                await InvokeAsync(StateHasChanged);
+            }
+        }
+        catch (OperationCanceledException)
+        {
+        }
+    }
+
+    private async Task LoadStatsAsync()
+    {
+        var users = await UserService.GetUsersAsync();
+        var books = await BookService.GetBooksAsync();
+        userCount = users.Count;
+        bookCount = books.Count;
+        lastUpdated = DateTime.Now.ToString("HH:mm:ss");
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        refreshCancellationTokenSource.Cancel();
+        refreshTimer?.Dispose();
+
+        if (refreshTask is not null)
+        {
+            await refreshTask;
+        }
+
+        refreshCancellationTokenSource.Dispose();
+    }
+}

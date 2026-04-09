@@ -1,0 +1,191 @@
+@page "/book-management"
+@using System.Collections.Generic
+@using System.Threading.Tasks
+@using BlazorApp.Features.Data.Models
+@using BlazorApp.Features.Services.Interfaces
+@inject IBookService BookService
+@inject ISnackbar Snackbar
+@layout LibraryShopManagement.Components.Layout.MainLayout
+
+<MudPaper Class="pa-5 rounded-lg" Elevation="1">
+    <MudTable T="Book" Items="books" Dense="true" Hover="true" Bordered="true" Striped="true">
+        <ToolBarContent>
+            <MudText Typo="Typo.h5" Color="Color.Primary">Books</MudText>
+            <MudSpacer />
+            <MudButton OnClick="OpenAddBookDialog" Variant="Variant.Filled" Color="Color.Primary">Add Book</MudButton>
+        </ToolBarContent>
+        <HeaderContent>
+            <MudTh>ID</MudTh>
+            <MudTh>Title</MudTh>
+            <MudTh>Author</MudTh>
+            <MudTh>Price</MudTh>
+            <MudTh>Stock</MudTh>
+            <MudTh>Actions</MudTh>
+        </HeaderContent>
+        <RowTemplate>
+            <MudTd DataLabel="ID">@context.Id</MudTd>
+            <MudTd DataLabel="Title">@context.Title</MudTd>
+            <MudTd DataLabel="Author">@context.Author</MudTd>
+            <MudTd DataLabel="Price">@($"${context.Price:F2}")</MudTd>
+            <MudTd DataLabel="Stock">@context.Stock</MudTd>
+            <MudTd DataLabel="Actions">
+                <div class="d-flex gap-2 flex-wrap">
+                    <MudButton OnClick="@(() => OpenEditBookDialog(context))" Variant="Variant.Text" Color="Color.Primary">Edit</MudButton>
+                    <MudButton OnClick="@(() => OpenDeleteDialog(context))" Variant="Variant.Text" Color="Color.Error">Delete</MudButton>
+                </div>
+            </MudTd>
+        </RowTemplate>
+        <NoRecordsContent>
+            <MudText Typo="Typo.body2" Class="pa-4">No books found.</MudText>
+        </NoRecordsContent>
+        <PagerContent>
+            <MudTablePager PageSizeOptions="new int[] { 5, 10, 20, int.MaxValue }"
+                           RowsPerPageString="Rows per page"
+                           InfoFormat="{first_item}-{last_item} of {all_items}"
+                           AllItemsText="All" />
+        </PagerContent>
+    </MudTable>
+</MudPaper>
+
+<MudDialog @bind-Visible="isBookDialogVisible" Options="dialogOptions">
+    <TitleContent>
+        <MudText Typo="Typo.h6">@(isEditMode ? "Edit Book" : "Add Book")</MudText>
+    </TitleContent>
+    <DialogContent>
+        <MudPaper Class="pa-2" Elevation="0">
+            <MudTextField T="string" @bind-Value="editBook.Title" Label="Title" Variant="Variant.Outlined" Margin="Margin.Dense" Immediate="true" />
+            <MudTextField T="string" @bind-Value="editBook.Author" Label="Author" Variant="Variant.Outlined" Margin="Margin.Dense" Immediate="true" />
+            <MudNumericField T="decimal" @bind-Value="editBook.Price" Label="Price" Variant="Variant.Outlined" Margin="Margin.Dense" Min="0" />
+            <MudNumericField T="int" @bind-Value="editBook.Stock" Label="Stock" Variant="Variant.Outlined" Margin="Margin.Dense" Min="0" />
+        </MudPaper>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="CloseBookDialog" Variant="Variant.Text">Cancel</MudButton>
+        <MudButton OnClick="SaveBookAsync" Variant="Variant.Filled" Color="Color.Primary">Save</MudButton>
+    </DialogActions>
+</MudDialog>
+
+<MudDialog @bind-Visible="isDeleteDialogVisible" Options="dialogOptions">
+    <TitleContent>
+        <MudText Typo="Typo.h6">Delete Book</MudText>
+    </TitleContent>
+    <DialogContent>
+        <MudPaper Class="pa-2" Elevation="0">
+            <MudText Typo="Typo.body1">This action cannot be undone. Do you want to proceed?</MudText>
+            @if (bookPendingDelete is not null)
+            {
+                <MudText Typo="Typo.body2" Class="mt-3">Book: @bookPendingDelete.Title</MudText>
+            }
+        </MudPaper>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="CloseDeleteDialog" Variant="Variant.Text">Cancel</MudButton>
+        <MudButton OnClick="DeleteBookAsync" Variant="Variant.Filled" Color="Color.Error">Delete</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    private readonly DialogOptions dialogOptions = new() { FullWidth = true, MaxWidth = MaxWidth.Small };
+    private List<Book> books = new();
+    private Book editBook = new();
+    private Book? bookPendingDelete;
+    private bool isEditMode;
+    private bool isBookDialogVisible;
+    private bool isDeleteDialogVisible;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadBooksAsync();
+    }
+
+    private async Task LoadBooksAsync()
+    {
+        books = await BookService.GetBooksAsync();
+    }
+
+    private void OpenAddBookDialog()
+    {
+        ResetForm();
+        isBookDialogVisible = true;
+    }
+
+    private void OpenEditBookDialog(Book book)
+    {
+        editBook = new Book
+        {
+            Id = book.Id,
+            Title = book.Title,
+            Author = book.Author,
+            Price = book.Price,
+            Stock = book.Stock
+        };
+        isEditMode = true;
+        isBookDialogVisible = true;
+    }
+
+    private void OpenDeleteDialog(Book book)
+    {
+        bookPendingDelete = book;
+        isDeleteDialogVisible = true;
+    }
+
+    private async Task SaveBookAsync()
+    {
+        if (string.IsNullOrWhiteSpace(editBook.Title) || string.IsNullOrWhiteSpace(editBook.Author))
+        {
+            Snackbar.Add("Title and author are required.", Severity.Error);
+            return;
+        }
+
+        if (isEditMode)
+        {
+            await BookService.UpdateBookAsync(editBook);
+            Snackbar.Add("Book updated successfully.", Severity.Success);
+        }
+        else
+        {
+            await BookService.CreateBookAsync(new Book
+            {
+                Title = editBook.Title,
+                Author = editBook.Author,
+                Price = editBook.Price,
+                Stock = editBook.Stock
+            });
+            Snackbar.Add("Book added successfully.", Severity.Success);
+        }
+
+        CloseBookDialog();
+        await LoadBooksAsync();
+    }
+
+    private async Task DeleteBookAsync()
+    {
+        if (bookPendingDelete is null)
+        {
+            return;
+        }
+
+        await BookService.DeleteBookAsync(bookPendingDelete.Id);
+        Snackbar.Add("Book deleted successfully.", Severity.Success);
+        CloseDeleteDialog();
+        await LoadBooksAsync();
+    }
+
+    private void CloseBookDialog()
+    {
+        isBookDialogVisible = false;
+        ResetForm();
+    }
+
+    private void CloseDeleteDialog()
+    {
+        isDeleteDialogVisible = false;
+        bookPendingDelete = null;
+    }
+
+    private void ResetForm()
+    {
+        editBook = new Book();
+        isEditMode = false;
+    }
+}

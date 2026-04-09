@@ -1,0 +1,88 @@
+@page "/register"
+@using System.Threading.Tasks
+@using BlazorApp.Features.Data.Enums
+@using BlazorApp.Features.Helpers
+@inject NavigationManager Navigation
+@inject ISnackbar Snackbar
+@layout LibraryShopManagement.Components.Layout.EmptyLayout
+
+<MudContainer MaxWidth="MaxWidth.Small" Class="py-12">
+    <MudPaper Class="pa-8 rounded-lg" Elevation="2">
+        <MudText Typo="Typo.h4" Color="Color.Primary" GutterBottom="true">Register</MudText>
+        <MudTextField T="string" @bind-Value="username" Label="Username" Variant="Variant.Outlined" Margin="Margin.Dense" Immediate="true" />
+        <MudTextField T="string" @bind-Value="email" Label="Email" Variant="Variant.Outlined" Margin="Margin.Dense" Immediate="true" />
+        <MudTextField T="string"
+                      @bind-Value="password"
+                      Label="Password"
+                      Variant="Variant.Outlined"
+                      Margin="Margin.Dense"
+                      InputType="@passwordInput"
+                      Adornment="Adornment.End"
+                      AdornmentIcon="@passwordInputIcon"
+                      OnAdornmentClick="@(() => TogglePasswordVisibility())"
+                      AdornmentAriaLabel="Show password" />
+        <MudSelect T="UserRole" @bind-Value="selectedRole" Label="Role" Variant="Variant.Outlined" Class="mt-2">
+            <MudSelectItem T="UserRole" Value="@(UserRole.Admin)">Admin</MudSelectItem>
+            <MudSelectItem T="UserRole" Value="@(UserRole.Staff)">Staff</MudSelectItem>
+            <MudSelectItem T="UserRole" Value="@(UserRole.Customer)">Customer</MudSelectItem>
+        </MudSelect>
+        <MudButton OnClick="RegisterUserAsync" Variant="Variant.Filled" Color="Color.Primary" FullWidth="true" Disabled="isProcessing" Class="mt-4">
+            @if (isProcessing)
+            {
+                <MudProgressCircular Class="ms-n1" Size="Size.Small" Indeterminate="true" />
+                <MudText Class="ms-2">Creating Account</MudText>
+            }
+            else
+            {
+                <MudText>Create Account</MudText>
+            }
+        </MudButton>
+        <MudText Typo="Typo.body2" Class="mt-4">
+            Already have an account?
+            <MudLink Href="/login" Typo="Typo.body2">Click here.</MudLink>
+        </MudText>
+        @if (!string.IsNullOrWhiteSpace(statusMessage))
+        {
+            <MudText Typo="Typo.body2" Color="@(isError ? Color.Error : Color.Success)" Class="mt-3">@statusMessage</MudText>
+        }
+    </MudPaper>
+</MudContainer>
+
+@code {
+    private readonly CustomAuthenticationStateProvider authProvider = new();
+    private string username = string.Empty;
+    private string email = string.Empty;
+    private string password = string.Empty;
+    private UserRole selectedRole = UserRole.Staff;
+    private string statusMessage = string.Empty;
+    private bool isProcessing;
+    private bool isError;
+    private bool isPasswordVisible;
+    private InputType passwordInput = InputType.Password;
+    private string passwordInputIcon = Icons.Material.Filled.VisibilityOff;
+
+    private void TogglePasswordVisibility()
+    {
+        isPasswordVisible = !isPasswordVisible;
+        passwordInput = isPasswordVisible ? InputType.Text : InputType.Password;
+        passwordInputIcon = isPasswordVisible ? Icons.Material.Filled.Visibility : Icons.Material.Filled.VisibilityOff;
+    }
+
+    private async Task RegisterUserAsync()
+    {
+        isProcessing = true;
+        isError = false;
+
+        var result = await authProvider.RegisterAsync(username, email, password, selectedRole);
+
+        statusMessage = result.Message;
+        isError = !result.Success;
+        Snackbar.Add(result.Message, result.Success ? Severity.Success : Severity.Error);
+        isProcessing = false;
+
+        if (result.Success)
+        {
+            Navigation.NavigateTo("/login");
+        }
+    }
+}
