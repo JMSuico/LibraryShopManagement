@@ -1,0 +1,55 @@
+@using System.Threading.Tasks
+@using BlazorApp.Features.Helpers
+@inject NavigationManager Navigation
+
+<MudNavMenu Class="pa-3" Rounded="true" Bordered="false">
+    <MudText Typo="Typo.h6" Class="px-4 pt-4">Library Shop</MudText>
+    <MudText Typo="Typo.body2" Class="px-4 mud-text-secondary pb-2">Management Suite</MudText>
+    <MudDivider Class="my-2" />
+    <MudNavLink Href="/" Icon="@Icons.Material.Filled.Home" Match="NavLinkMatch.All">Home</MudNavLink>
+    <MudNavLink Href="/dashboard" Icon="@Icons.Material.Filled.Dashboard">Dashboard</MudNavLink>
+    <MudNavLink Href="/user-management" Icon="@Icons.Material.Filled.People">Users</MudNavLink>
+    <MudNavLink Href="/book-management" Icon="@Icons.Material.Filled.MenuBook">Books</MudNavLink>
+    <MudDivider Class="my-2" />
+    <MudNavLink Icon="@Icons.Material.Filled.Logout" OnClick="OpenLogoutDialog">Logout</MudNavLink>
+</MudNavMenu>
+
+<MudDialog Visible="@showLogoutDialog" Options="dialogOptions">
+    <DialogContent>
+        <MudText Typo="Typo.h6" GutterBottom="true">Logout</MudText>
+        <MudText Typo="Typo.body1">Do you want to logout?</MudText>
+    </DialogContent>
+    <DialogActions>
+        <MudButton Variant="Variant.Outlined" Color="Color.Default" OnClick="CancelLogout">Cancel</MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Error" OnClick="ConfirmLogout">Logout</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    private readonly CustomAuthenticationStateProvider authProvider = new();
+    private bool showLogoutDialog;
+    private readonly DialogOptions dialogOptions = new()
+    {
+        BackdropClick = false,
+        CloseOnEscapeKey = false,
+        MaxWidth = MaxWidth.ExtraSmall,
+        FullWidth = true
+    };
+
+    private void OpenLogoutDialog()
+    {
+        showLogoutDialog = true;
+    }
+
+    private void CancelLogout()
+    {
+        showLogoutDialog = false;
+    }
+
+    private async Task ConfirmLogout()
+    {
+        showLogoutDialog = false;
+        await authProvider.LogoutAsync();
+        Navigation.NavigateTo("/login");
+    }
+}

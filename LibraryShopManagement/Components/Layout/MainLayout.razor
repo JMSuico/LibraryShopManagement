@@ -1,0 +1,54 @@
+@inherits LayoutComponentBase
+
+<MudThemeProvider Theme="_theme" />
+<MudLayout>
+    <MudDrawer @bind-Open="drawerOpen" Variant="DrawerVariant.Persistent" Elevation="1" Width="270px" Class="mud-theme-surface">
+        <MudDrawerHeader>
+            <MudText Typo="Typo.h5" Class="px-4 pt-4">📚 LibraryShop</MudText>
+        </MudDrawerHeader>
+        <NavMenu />
+    </MudDrawer>
+
+    <MudAppBar Color="Color.Primary" Fixed="true" Elevation="1">
+        <MudIconButton Icon="@Icons.Material.Filled.Menu" Color="Color.Inherit" Edge="Edge.Start" OnClick="@(() => ToggleDrawer())" aria-label="toggle sidebar" />
+        <MudText Typo="Typo.h6">LibraryShopManagement</MudText>
+        <MudSpacer />
+        <MudPaper Class="px-3 py-1 rounded-pill d-none d-sm-block" Elevation="0">
+            <MudText Typo="Typo.body2">Apricot & Light Blue Theme</MudText>
+        </MudPaper>
+    </MudAppBar>
+
+    <MudMainContent>
+        <MudContainer MaxWidth="MaxWidth.ExtraExtraLarge" Class="pt-16 pb-8">
+            @Body
+        </MudContainer>
+    </MudMainContent>
+</MudLayout>
+
+@code {
+    private bool drawerOpen = true;
+
+    private void ToggleDrawer()
+    {
+        drawerOpen = !drawerOpen;
+    }
+
+    private readonly MudTheme _theme = new()
+    {
+        PaletteLight = new PaletteLight
+        {
+            Primary = new MudBlazor.Utilities.MudColor("#f4a261"),
+            Secondary = new MudBlazor.Utilities.MudColor("#8ecae6"),
+            Tertiary = new MudBlazor.Utilities.MudColor("#ffd6b3"),
+            Background = new MudBlazor.Utilities.MudColor("#fff8f2"),
+            Surface = new MudBlazor.Utilities.MudColor("#ffffff"),
+            DrawerBackground = new MudBlazor.Utilities.MudColor("#fdf2e9"),
+            AppbarBackground = new MudBlazor.Utilities.MudColor("#f4a261"),
+            AppbarText = new MudBlazor.Utilities.MudColor("#ffffff")
+        },
+        LayoutProperties = new LayoutProperties
+        {
+            DrawerWidthLeft = "270px"
+        }
+    };
+}

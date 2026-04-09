@@ -1,0 +1,137 @@
+@page "/dashboard"
+@using System
+@using System.Collections.Generic
+@using System.Linq
+@using System.Threading
+@using System.Threading.Tasks
+@using BlazorApp.Features.Data.Enums
+@using BlazorApp.Features.Services.Interfaces
+@implements IAsyncDisposable
+@inject IUserService UserService
+@inject IBookService BookService
+@layout LibraryShopManagement.Components.Layout.MainLayout
+
+<MudGrid>
+    <MudItem xs="12" md="4">
+        <MudPaper Class="pa-5 rounded-lg" Elevation="1">
+            <MudText Typo="Typo.subtitle2" Class="mud-text-secondary">Sales Today</MudText>
+            <MudText Typo="Typo.h4" Color="Color.Primary">@($"${salesToday:F2}")</MudText>
+            <MudText Typo="Typo.body2">Live snapshot @lastUpdated</MudText>
+        </MudPaper>
+    </MudItem>
+    <MudItem xs="12" md="4">
+        <MudPaper Class="pa-5 rounded-lg" Elevation="1">
+            <MudText Typo="Typo.subtitle2" Class="mud-text-secondary">Low Stock Books</MudText>
+            <MudText Typo="Typo.h4" Color="Color.Secondary">@lowStockBooks</MudText>
+            <MudText Typo="Typo.body2">Stock threshold: 10</MudText>
+        </MudPaper>
+    </MudItem>
+    <MudItem xs="12" md="4">
+        <MudPaper Class="pa-5 rounded-lg" Elevation="1">
+            <MudText Typo="Typo.subtitle2" Class="mud-text-secondary">Active Staff</MudText>
+            <MudText Typo="Typo.h4">@activeStaff</MudText>
+            <MudText Typo="Typo.body2">Based on current user list</MudText>
+        </MudPaper>
+    </MudItem>
+    <MudItem xs="12" lg="8">
+        <MudPaper Class="pa-5 rounded-lg" Elevation="1">
+            <div class="d-flex align-center justify-space-between mb-2">
+                <MudText Typo="Typo.h6">Monthly Activity</MudText>
+                <MudText Typo="Typo.caption" Class="mud-text-secondary">Live analytics every 2s</MudText>
+            </div>
+            <MudChart ChartType="ChartType.StackedBar" ChartSeries="chartSeries" XAxisLabels="xAxisLabels" Width="100%" Height="320px" LegendPosition="Position.Bottom"></MudChart>
+        </MudPaper>
+    </MudItem>
+    <MudItem xs="12" lg="4">
+        <MudPaper Class="pa-5 rounded-lg" Elevation="1">
+            <MudText Typo="Typo.h6" GutterBottom="true">Highlights</MudText>
+            <MudText Typo="Typo.body2" Class="mb-2">• Live totals respond to add, edit, and delete actions.</MudText>
+            <MudText Typo="Typo.body2" Class="mb-2">• Low-stock insight tracks books at or below 10 copies.</MudText>
+            <MudText Typo="Typo.body2">• Staff count updates from the current in-memory records.</MudText>
+        </MudPaper>
+    </MudItem>
+</MudGrid>
+
+@code {
+    private decimal salesToday;
+    private int lowStockBooks;
+    private int activeStaff;
+    private string lastUpdated = "--:--:--";
+    private List<ChartSeries> chartSeries = new();
+    private string[] xAxisLabels = Array.Empty<string>();
+    private readonly CancellationTokenSource refreshCancellationTokenSource = new();
+    private PeriodicTimer? refreshTimer;
+    private Task? refreshTask;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadAnalyticsAsync();
+        refreshTimer = new PeriodicTimer(TimeSpan.FromSeconds(2));
+        refreshTask = StartLiveUpdatesAsync();
+    }
+
+    private async Task StartLiveUpdatesAsync()
+    {
+        if (refreshTimer is null)
+        {
+            return;
+        }
+
+        try
+        {
+            while (await refreshTimer.WaitForNextTickAsync(refreshCancellationTokenSource.Token))
+            {
+                await LoadAnalyticsAsync();
+                await InvokeAsync(StateHasChanged);
+            }
+        }
+        catch (OperationCanceledException)
+        {
+        }
+    }
+
+    private async Task LoadAnalyticsAsync()
+    {
+        var users = await UserService.GetUsersAsync();
+        var books = await BookService.GetBooksAsync();
+        var now = DateTime.Now;
+        var activitySeed = Math.Max(1, now.Second % 7 + 1);
+        var salesUnits = Math.Max(1, (now.Second % 5) + users.Count);
+
+        salesToday = books.Sum(x => x.Price) * salesUnits;
+        lowStockBooks = books.Count(x => x.Stock <= 10);
+        activeStaff = users.Count(x => x.Role == UserRole.Staff);
+        lastUpdated = now.ToString("HH:mm:ss");
+
+        xAxisLabels = Enumerable.Range(0, 6)
+            .Select(index => now.AddMonths(index - 5).ToString("MMM"))
+            .ToArray();
+
+        var borrowed = Enumerable.Range(0, 6)
+            .Select(index => (double)(books.Count * 4 + activitySeed + (index * 2) + (books.Sum(x => x.Stock) % 6)))
+            .ToArray();
+
+        var sold = Enumerable.Range(0, 6)
+            .Select(index => (double)(users.Count * 2 + activitySeed + index + (books.Count % 4)))
+            .ToArray();
+
+        chartSeries = new List<ChartSeries>
+        {
+            new() { Name = "Borrowed", Data = borrowed },
+            new() { Name = "Sold", Data = sold }
+        };
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        refreshCancellationTokenSource.Cancel();
+        refreshTimer?.Dispose();
+
+        if (refreshTask is not null)
+        {
+            await refreshTask;
+        }
+
+        refreshCancellationTokenSource.Dispose();
+    }
+}
